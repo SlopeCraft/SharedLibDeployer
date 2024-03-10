@@ -3,7 +3,7 @@ use std::process::Command;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = "Deploy dll for exe or dll")]
+#[command(version, about, long_about = "Deploy dll for exe or dll.")]
 struct Args {
 
     /// The target file to deploy dll for. This can be an exe or dll.
@@ -277,6 +277,13 @@ fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,binary_format
     for dep in &deps {
         let expected_filename=format!("{target_dir}/dep");
 
+        if args.ignore.contains(&dep) {
+            if args.verbose{
+                println!("Skip {dep} because it is assigned to be ignored");
+            }
+            continue;
+        }
+
         if is_system_dll(dep) {
             if args.verbose {
                 println!("Skip system dll {dep}");
@@ -356,7 +363,6 @@ fn main() {
             args.binary_file= new_target;
         }
     }
-
 
     let target_dir=PathBuf::from(&args.binary_file);
     let target_dir=target_dir.parent().unwrap().to_str().unwrap();
