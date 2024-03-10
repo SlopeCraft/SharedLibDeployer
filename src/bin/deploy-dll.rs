@@ -218,21 +218,33 @@ fn get_file_format(filename:&str,objdump_loc:&str)->String {
     panic!("Failed to parse file format of {filename} from objdump output, it says: \n{output}");
 }
 
-fn search_dll_deep(name:&str, args:&Args, validate:Option<&dyn Fn(&Path) ->bool>)->Option<String> {
+fn validate_dll(dll_loc:&Path, args:&Args, custom_validator:Option<&dyn Fn(&Path) ->Result<(),String>>) ->bool {
+    if !is_file(&dll_loc) {
+        return false;
+    }
+    if let Some(validate)=&custom_validator {
+        if let Err(reason)=validate(&dll_loc) {
+            if args.verbose {
+                println!("Skipped \"{}\" because {reason}", dll_loc.display());
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+fn search_dll_deep(name:&str, args:&Args, validate:Option<&dyn Fn(&Path) ->Result<(),String>>)->Option<String> {
     use walkdir::WalkDir;
     for dir in args.deep_search_dirs() {
         for entry in WalkDir::new(dir) {
             let entry=entry.unwrap();
             let mut loc=entry.path().to_path_buf();
             loc.push(name);
-            if !is_file(&loc) {
+
+            if !validate_dll(&loc,args,validate) {
                 continue;
             }
-            if let Some(validate)=&validate {
-                if !validate(&loc) {
-                    continue;
-                }
-            }
+
             return Some(loc.to_str().unwrap().to_string());
         }
     }
@@ -241,21 +253,16 @@ fn search_dll_deep(name:&str, args:&Args, validate:Option<&dyn Fn(&Path) ->bool>
 }
 
 
-fn search_dll_shallow(name:&str, args:&Args, validate:Option<&dyn Fn(&Path) ->bool>) ->Option<String> {
+fn search_dll_shallow(name:&str, args:&Args, validate:Option<&dyn Fn(&Path) ->Result<(),String>>) ->Option<String> {
     for path in args.shallow_search_dirs() {
-        let mut path=PathBuf::from(path);
-        path.push(name);
+        let mut loc =PathBuf::from(path);
+        loc.push(name);
 
-        if !is_file(&path) {
+        if !validate_dll(&loc,args,validate) {
             continue;
         }
-        if let Some(validate)=&validate {
-            if !validate(&path) {
-                continue;
-            }
-        }
 
-        return Some(path.to_str().unwrap().to_string());
+        return Some(loc.to_str().unwrap().to_string());
     }
     return None;
 }
@@ -294,8 +301,13 @@ fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,binary_format
 
         let mut loc=None;
 
-        let validator=|loc:&Path|{ let format= get_file_format(loc.to_str().unwrap(),objdump_file);
-            return format==binary_format;} ;
+        let validator=|loc:&Path|{
+            let format= get_file_format(loc.to_str().unwrap(),objdump_file);
+            if format!=binary_format {
+                return Err(format!("DLL architecture mismatch. Expected {binary_format}, but found {format}"));
+            }
+            return Ok(());
+        } ;
         let validator=Box::new(validator);
 
         // try shallow search first
