@@ -1,5 +1,5 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, exit};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -237,7 +237,16 @@ fn search_dll_deep(name:&str, args:&Args, validate:Option<&dyn Fn(&Path) ->Resul
     use walkdir::WalkDir;
     for dir in args.deep_search_dirs() {
         for entry in WalkDir::new(dir) {
-            let entry=entry.unwrap();
+
+            let entry= match entry {
+                Ok(e) =>e,
+                Err(e) => {
+                    if args.verbose {
+                        println!("Failed to search in \"{:?}\" because {}",e.path(),e);
+                    }
+                    continue;
+                }
+            };
             let mut loc=entry.path().to_path_buf();
             loc.push(name);
 
@@ -275,16 +284,26 @@ fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,binary_format
     let deps=get_dependencies(target_binary,objdump_file);
 
     for dep in &deps {
-        let expected_filename=format!("{target_dir}/dep");
+        let expected_filename=format!("{target_dir}/{dep}");
+        if let Ok(_)=std::fs::metadata(&expected_filename) {
+            // the dll already exist
+            if args.verbose {
+                println!("{expected_filename} already exists");
+            }
+            continue;
+        }
 
         if args.ignore.contains(&dep) {
+            // The dll is assigned to be ignored
             if args.verbose{
                 println!("Skip {dep} because it is assigned to be ignored");
             }
             continue;
         }
 
+
         if is_system_dll(dep) {
+            // Skip system dll
             if args.verbose {
                 println!("Skip system dll {dep}");
             }
@@ -292,20 +311,18 @@ fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,binary_format
         }
 
         if !args.copy_vc_redist &&is_vc_redist_dll(dep) {
+            // Skip vc redist dll.
             if args.verbose {
                 println!("Skip VC redistributable dll {dep}");
             }
             continue;
         }
 
-        if let Ok(_)=std::fs::metadata(&expected_filename) {
-            if args.verbose {
-                println!("{expected_filename} already exists");
-            }
-            // the dll already exist
-            continue;
-        }
 
+        if args.verbose {
+            println!("Searching {dep} for {target_binary}");
+        }
+        // search for it
         let mut loc=None;
 
         let validator=|loc:&Path|{
@@ -339,7 +356,8 @@ fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,binary_format
             }
             std::fs::copy(location,format!("{target_dir}/{dep}")).expect("Failed to copy dll");
         }else {
-            panic!("Failed to find dll \"{dep}\", required by \"{target_binary}\"");
+            eprintln!("Failed to find dll \"{dep}\", required by \"{target_binary}\"");
+            exit(1);
         }
 
 
