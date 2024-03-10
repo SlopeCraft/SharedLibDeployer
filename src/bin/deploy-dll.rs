@@ -195,37 +195,73 @@ fn is_file<P: AsRef<Path>>(path: &P)->bool {
     return false;
 }
 
-fn search_dll_shallow(name:&str, args:&Args) ->Option<String> {
-    for path in args.shallow_search_dirs() {
-        let mut path=PathBuf::from(path);
-        path.push(name);
+fn get_file_format(filename:&str,objdump_loc:&str)->String {
+    let output=Command::new(objdump_loc).args(["-f", filename]).output().unwrap();
 
-        if is_file(&path) {
-            return Some(path.to_str().unwrap().to_string());
+    if !output.status.success() {
+        let command=format!("{objdump_loc} -f {filename}");
+        eprintln!("{command} failed with error code {:?}",output.status.to_string());
+        panic!("It failed with std error output: \n{}",String::from_utf8(output.stderr).unwrap());
+    }
+
+    let output=String::from_utf8(output.stdout).unwrap().replace('\r',"");
+
+
+    //println!("{}",output);
+    for line in output.split("\n") {
+        //println!("Line {idx}: {line}");
+        if let Some(loc)=line.rfind("file format ") {
+            let loc=loc+"file format ".len();
+            return line[loc..line.len()].to_string();
         }
     }
-    return None;
+    panic!("Failed to parse file format of {filename} from objdump output, it says: \n{output}");
 }
 
-
-
-fn search_dll_deep(name:&str,args:&Args)->Option<String> {
+fn search_dll_deep(name:&str, args:&Args, validate:Option<&dyn Fn(&Path) ->bool>)->Option<String> {
     use walkdir::WalkDir;
     for dir in args.deep_search_dirs() {
         for entry in WalkDir::new(dir) {
             let entry=entry.unwrap();
             let mut loc=entry.path().to_path_buf();
             loc.push(name);
-            if is_file(&loc) {
-                return Some(loc.to_str().unwrap().to_string());
+            if !is_file(&loc) {
+                continue;
             }
+            if let Some(validate)=&validate {
+                if !validate(&loc) {
+                    continue;
+                }
+            }
+            return Some(loc.to_str().unwrap().to_string());
         }
     }
 
     return None;
 }
 
-fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,args:&Args) {
+
+fn search_dll_shallow(name:&str, args:&Args, validate:Option<&dyn Fn(&Path) ->bool>) ->Option<String> {
+    for path in args.shallow_search_dirs() {
+        let mut path=PathBuf::from(path);
+        path.push(name);
+
+        if !is_file(&path) {
+            continue;
+        }
+        if let Some(validate)=&validate {
+            if !validate(&path) {
+                continue;
+            }
+        }
+
+        return Some(path.to_str().unwrap().to_string());
+    }
+    return None;
+}
+
+
+fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,binary_format:&str,args:&Args) {
     if args.verbose {
         println!("Deploying for \"{target_binary}\" at \"{target_dir}\"");
     }
@@ -258,17 +294,21 @@ fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,args:&Args) {
 
         let mut loc=None;
 
+        let validator=|loc:&Path|{ let format= get_file_format(loc.to_str().unwrap(),objdump_file);
+            return format==binary_format;} ;
+        let validator=Box::new(validator);
+
         // try shallow search first
         if let None=&loc {
             if !args.no_shallow_search {
-                if let Some(location) = search_dll_shallow(dep, args) {
+                if let Some(location) = search_dll_shallow(dep, args,Some(&validator)) {
                     loc=Some(location);
                 }
             }
         }
         if let None=&loc {
             if !args.no_deep_search {
-                if let Some(location) = search_dll_deep(dep,args) {
+                if let Some(location) = search_dll_deep(dep,args,Some(&validator)) {
                     loc=Some(location);
                 }
             }
@@ -284,7 +324,7 @@ fn deploy_dll(target_binary:&str,target_dir:&str,objdump_file:&str,args:&Args) {
         }
 
 
-        deploy_dll(dep,target_dir,objdump_file,args);
+        deploy_dll(dep,target_dir,objdump_file,binary_format,args);
     }
 }
 fn main() {
@@ -308,5 +348,9 @@ fn main() {
 
     let target_dir=PathBuf::from(&args.binary_file);
     let target_dir=target_dir.parent().unwrap().to_str().unwrap();
-    deploy_dll(&args.binary_file,target_dir,&args.objdump_file(),&args);
+    let format= get_file_format(&args.binary_file,&args.objdump_file());
+    if args.verbose {
+        println!("Binary format: \"{format}\"");
+    }
+    deploy_dll(&args.binary_file,target_dir,&args.objdump_file(),&format,&args);
 }
