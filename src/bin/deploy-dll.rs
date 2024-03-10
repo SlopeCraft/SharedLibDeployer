@@ -9,8 +9,8 @@ struct Args {
     /// The target file to deploy dll for. This can be an exe or dll.
     binary_file:String,
 
-    /// No not search in system variable PATH
-    #[arg(long,default_value_t=true)]
+    /// Do not search in system variable PATH
+    #[arg(long,default_value_t=false)]
     skip_env_path:bool,
 
     /// Copy Microsoft Visual C/C++ redistributable dlls.
@@ -36,10 +36,10 @@ struct Args {
     no_deep_search:bool,
 
     /// CMAKE_PREFIX_PATH for cmake to search for packages
-    #[arg(short,long)]
+    #[arg(long)]
     cmake_prefix_path:Vec<String>,
     /// Dll files that won't be deployed
-    #[arg(short,long)]
+    #[arg(long)]
     ignore:Vec<String>,
 
     /// Location of dumpbin file
