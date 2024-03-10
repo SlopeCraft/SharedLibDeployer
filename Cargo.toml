@@ -1,7 +1,15 @@
 [package]
 name = "SharedLibDeployer"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
+authors = ["Joseph <tokinobug@163.com>"]
+license = "GPL-3"
+description = "Deploy dlls for your exectuable, useful for redistributing your application as binaries."
+readme = "README.md"
+homepage = "https://github.com/ToKiNoBug/SharedLibDeployer"
+repository = "https://github.com/ToKiNoBug/SharedLibDeployer"
+keywords = ["DLL","Windows"]
+categories = ["command-line-utilities"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
