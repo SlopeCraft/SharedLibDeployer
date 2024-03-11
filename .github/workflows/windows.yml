@@ -21,7 +21,7 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: install deploy-dll
-      run: cargo install --release
+      run: cargo install
     - name: Test
       run: |
         vcpkg install libzip --triplet=x64-windows
