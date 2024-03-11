@@ -158,7 +158,8 @@ fn parse_output_single_line(output: &str) -> &str {
 
     let loc1 = loc1 + "DLL Name: ".len();
     if loc1 + 1 >= loc2 {
-        panic!("{}", fail_msg);
+        eprintln!("{}", fail_msg);
+        exit(8);
     }
 
     return &output[loc1..loc2];
@@ -171,7 +172,7 @@ fn get_dependencies(file: &str, objdump_file: &str) -> Vec<String> {
     if !output.status.success() {
         eprintln!("{} {} -x failed with error code {}", objdump_file, file, output.status.to_string());
         eprintln!("The std error is: {}", String::from_utf8(output.stderr).unwrap());
-        panic!("objdump failed.");
+        exit(1);
     }
 
     let output = String::from_utf8(output.stdout).expect("Failed to convert output to utf8");
@@ -246,7 +247,8 @@ fn get_file_format(filename: &str, objdump_loc: &str) -> String {
     if !output.status.success() {
         let command = format!("{objdump_loc} -f {filename}");
         eprintln!("{command} failed with error code {:?}", output.status.to_string());
-        panic!("It failed with std error output: \n{}", String::from_utf8(output.stderr).unwrap());
+        eprintln!("It failed with std error output: \n{}", String::from_utf8(output.stderr).unwrap());
+        exit(1);
     }
 
     let output = String::from_utf8(output.stdout).unwrap().replace('\r', "");
@@ -260,7 +262,8 @@ fn get_file_format(filename: &str, objdump_loc: &str) -> String {
             return line[loc..line.len()].to_string();
         }
     }
-    panic!("Failed to parse file format of {filename} from objdump output, it says: \n{output}");
+    eprintln!("Failed to parse file format of {filename} from objdump output, it says: \n{output}");
+    exit(1);
 }
 
 fn validate_dll(dll_loc: &Path, args: &Args, custom_validator: Option<&dyn Fn(&Path) -> Result<(), String>>) -> bool {
