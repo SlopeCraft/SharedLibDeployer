@@ -27,4 +27,5 @@ jobs:
         vcpkg install libzip --triplet=x64-windows
         mkdir test
         cp C:/vcpkg/installed/x64-windows/bin/zip.dll ./test
-        deploy-dll ./zip.dll --cmake-prefix-path=C:/vcpkg/installed/x64-windows --verbose
+        ls -l ./test
+        deploy-dll ./test/zip.dll --cmake-prefix-path=C:/vcpkg/installed/x64-windows --verbose
