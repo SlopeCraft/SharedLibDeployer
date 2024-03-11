@@ -35,13 +35,25 @@ jobs:
         cargo build --release
         mkdir target/make-package
         cargo install --path . --root target/make-package
-        cp C:/mingw/bin/objdump.exe ./target/make-package/bin
-        deploy-dll ./target/make-package/bin/deploy-dll.exe --shallow-search-dir=C:/mingw/bin
-        deploy-dll ./target/make-package/bin/objdump.exe --shallow-search-dir=C:/mingw/bin
+        cp C:/mingw64/bin/objdump.exe ./target/make-package/bin
+        deploy-dll ./target/make-package/bin/deploy-dll.exe --shallow-search-dir=C:/mingw64/bin
+        deploy-dll ./target/make-package/bin/objdump.exe --shallow-search-dir=C:/mingw64/bin
 
     - name: Upload package
       uses: actions/upload-artifact@v3
       with:
         name: SharedLibDeployer-1.0.0-win64
+        path: target/make-package
+        if-no-files-found: error
+
+    - name: Make package(best compat)
+      run: |
+        deploy-dll ./target/make-package/bin/deploy-dll.exe --shallow-search-dir=C:/mingw64/bin --copy-vc-redist
+        deploy-dll ./target/make-package/bin/objdump.exe --shallow-search-dir=C:/mingw64/bin --copy-vc-redist
+
+    - name: Upload package(best compat)
+      uses: actions/upload-artifact@v3
+      with:
+        name: SharedLibDeployer-compat-1.0.0-win64
         path: target/make-package
         if-no-files-found: error
