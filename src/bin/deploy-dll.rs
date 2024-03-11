@@ -398,7 +398,7 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
             if args.verbose {
                 println!("Copying \"{location}\" to \"{target_dir}\"");
             }
-            std::fs::copy(location, format!("{target_dir}/{dep}")).expect("Failed to copy dll");
+            std::fs::copy(location, &expected_filename).expect("Failed to copy dll");
         } else if args.allow_missing {
             println!("Failed to find dll \"{dep}\", required by \"{target_binary}\"");
             continue;
@@ -408,7 +408,7 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
         }
 
 
-        deploy_dll(dep, target_dir, objdump_file, binary_format, args);
+        deploy_dll(&expected_filename, target_dir, objdump_file, binary_format, args);
     }
 }
 
