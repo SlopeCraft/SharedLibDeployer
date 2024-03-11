@@ -416,6 +416,10 @@ fn main() {
     let mut args = Args::parse();
     {
         let target = PathBuf::from(&args.binary_file);
+        if !is_file(&target) {
+            eprintln!("The given target \"{}\" is not a file",target.display());
+            exit(5);
+        }
         if target.is_relative() {
             if args.verbose {
                 print!("The given binary path \"{}\" is a relative path, ", &args.binary_file);
@@ -427,7 +431,13 @@ fn main() {
                 println!("converted to \"{new_target}\"")
             }
             args.binary_file = new_target;
+            assert!(is_file(&args.binary_file));
         }
+    }
+
+    let objdump_loc=args.objdump_file();
+    if args.verbose {
+        println!("Using objdump at {objdump_loc}");
     }
 
     let target_dir = PathBuf::from(&args.binary_file);
@@ -436,5 +446,5 @@ fn main() {
     if args.verbose {
         println!("Binary format: \"{format}\"");
     }
-    deploy_dll(&args.binary_file, target_dir, &args.objdump_file(), &format, &args);
+    deploy_dll(&args.binary_file, target_dir, &objdump_loc, &format, &args);
 }
