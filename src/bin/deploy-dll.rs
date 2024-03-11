@@ -41,8 +41,8 @@ struct Args {
     #[arg(long)]
     ignore: Vec<String>,
 
-    /// Location of dumpbin file
-    #[arg(long, default_value_t = String::from("[builtin]"))]
+    /// Location of dumpbin file. Valid values: [auto] [system] [builtin] path
+    #[arg(long, default_value_t = String::from("[auto]"))]
     objdump_file: String,
     /// If one or more dll failed to be found, skip it and go on
     #[arg(long, default_value_t = false)]
@@ -60,19 +60,61 @@ fn existing_var_path(dest: &mut Vec<String>) {
     }
 }
 
+fn get_system_objdump()->Option<String> {
+    let output=Command::new("where").args(["objdump"]).output().unwrap();
+    let output=String::from_utf8(output.stdout).unwrap().replace('\r',"");
+    for line in output.split('\n') {
+        if is_file(&line) {
+            return Some(line.to_string());
+        }
+    }
+    return None;
+}
+
+fn get_objdump_file(input:&str)->String {
+    if input=="[system]" {
+        if let Some(loc)=get_system_objdump() {
+            return loc;
+        }
+        eprintln!("Failed to find objdump in your system");
+        exit(2);
+    }
+
+    if input == "[builtin]" {
+        let current_exe = std::env::current_exe().expect("Get current exe name");
+        //println!("current_exe = {}",current_exe.to_str().unwrap());
+        let install_prefix = current_exe.parent().expect("Get parent dir of current exe");
+        //println!("install_prefix = {}",install_prefix.to_str().unwrap());
+        let mut p = install_prefix.to_path_buf();
+        p.push("objdump.exe");
+
+        if !is_file(&p) {
+            eprintln!("Builtin objdump executable {} not found",p.display());
+            exit(3);
+        }
+
+        //println!("objdump path = {}",p.to_str().unwrap());
+        return p.to_str().unwrap().to_string();
+    }
+
+    if input=="[auto]"  {
+        if let Some(loc)=get_system_objdump() {
+            return loc;
+        }
+        return get_objdump_file("[builtin]");
+    }
+
+    if !is_file(&input) {
+        eprintln!("Given objdump file {} doesn't exist",input);
+        exit(4);
+    }
+
+    return input.to_string();
+}
+
 impl Args {
     fn objdump_file(&self) -> String {
-        if self.objdump_file == "[builtin]" {
-            let current_exe = std::env::current_exe().expect("Get current exe name");
-            //println!("current_exe = {}",current_exe.to_str().unwrap());
-            let install_prefix = current_exe.parent().expect("Get parent dir of current exe");
-            //println!("install_prefix = {}",install_prefix.to_str().unwrap());
-            let mut p = install_prefix.to_path_buf();
-            p.push("objdump.exe");
-            //println!("objdump path = {}",p.to_str().unwrap());
-            return p.to_str().unwrap().to_string();
-        }
-        return self.objdump_file();
+        return get_objdump_file(&self.objdump_file);
     }
 
     fn shallow_search_dirs(&self) -> Vec<String> {
