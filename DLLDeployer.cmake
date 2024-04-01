@@ -16,33 +16,39 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
 
     set(extract_destination "${PROJECT_BINARY_DIR}/3rdParty/SharedLibDeployer")
 
+    set(found_components 0)
+
     message(STATUS "Searching for installed deploy-dll executable")
     find_program(exe_path
         NAMES "deploy-dll"
-        HINTS ${extract_destination}/bin)
+        HINTS ${extract_destination}/bin
+        NO_CACHE)
     if(exe_path)
         message(STATUS "Found ${exe_path}")
         set(${out_deploy_dll} ${exe_path} PARENT_SCOPE)
+        math(EXPR found_components "${found_components} + 1")
     endif ()
 
     message(STATUS "Searching for objdump executable")
     find_program(objdump_path
         NAMES "objdump"
-        HINTS ${extract_destination}/bin)
+        HINTS ${extract_destination}/bin
+            NO_CACHE)
     if(objdump_path)
         message(STATUS "Found ${objdump_path}")
         set(${out_objdump} ${objdump_path} PARENT_SCOPE)
+        math(EXPR found_components "${found_components} + 1")
     endif ()
 
-    if(EXISTS ${out_objdump} AND EXISTS ${out_deploy_dll})
+    if(${found_components} GREATER_EQUAL 2)
         return()
     endif ()
 
-    message(STATUS "Downloading and extracting SharedLibDeployer-compat-1.2.1-win64.7z")
-    set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-compat-1.2.1-win64.7z")
-    file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v1.2.1/SharedLibDeployer-compat-1.2.1-win64.7z
+    message(STATUS "Downloading and extracting SharedLibDeployer-1.2.2-win64.7z")
+    set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-1.2.2-win64.7z")
+    file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v1.2.2/SharedLibDeployer-1.2.2-win64.7z
         ${archive_loc}
-        EXPECTED_HASH SHA512=75174650EDE1D3A75D1AD90A90A62612B53DEAE8BAB64D005253E974DDB1CCAAA113AE69563AB393963CDEE21C67A30C7AB97A6D1D5794D1A40422779100193F)
+        EXPECTED_HASH SHA512=2EB112063210CBA6407218BDE1E1E2E04F78FBFABE5CEAAE242D21EE562ED6B71715E82662BDC39BE605CD09605188E63F6FE6C9C476A076F90EDBC77A8B7DE1)
 
     file(ARCHIVE_EXTRACT INPUT ${archive_loc} DESTINATION ${extract_destination})
 
@@ -51,14 +57,14 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
         message(FATAL_ERROR "${archive_loc} was extracted, but \"${extracted_deploy_dll_exe}\" was not found")
     endif ()
     DLLD_replace_backslash(extracted_deploy_dll_exe extracted_deploy_dll_exe)
-    set(${out_deploy_dll} ${extracted_deploy_dll_exe})
+    set(${out_deploy_dll} ${extracted_deploy_dll_exe} PARENT_SCOPE)
 
     set(extracted_objdump_exe "${extract_destination}/bin/objdump.exe")
     if(NOT EXISTS ${extracted_objdump_exe})
         message(FATAL_ERROR "${archive_loc} was extracted, but \"${extracted_objdump_exe}\" was not found")
     endif ()
     DLLD_replace_backslash(extracted_objdump_exe extracted_objdump_exe)
-    set(${out_objdump} ${extracted_objdump_exe})
+    set(${out_objdump} ${extracted_objdump_exe} PARENT_SCOPE)
 
 
 #    message(STATUS "Searching for cargo")
