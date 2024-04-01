@@ -39,7 +39,7 @@ jobs:
         cmake --build ./build
         cd ./build
         cpack -G 7Z
-        cmake --install
+        cmake --install .
 
     - name: Make package
       run: |
