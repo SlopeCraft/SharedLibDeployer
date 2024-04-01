@@ -1,6 +1,6 @@
 [package]
 name = "shared_lib_deployer"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2021"
 authors = ["Joseph <tokinobug@163.com>"]
 license = "GPL-3.0-only"
@@ -18,5 +18,4 @@ name = "deploy-dll"
 
 [dependencies]
 clap = { version = "4.5.2", features = ["derive"] }
-regex = "1.10.3"
 walkdir = "2.5.0"

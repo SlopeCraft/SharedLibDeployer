@@ -34,13 +34,13 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
         set(${out_objdump} ${objdump_path} PARENT_SCOPE)
     endif ()
 
-    if(out_objdump AND out_deploy_dll)
+    if(EXISTS ${out_objdump} AND EXISTS ${out_deploy_dll})
         return()
     endif ()
 
-    message(STATUS "Downloading and extracting SharedLibDeployer-compat-1.2.0-win64.7z")
-    set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-compat-1.2.0-win64.7z")
-    file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v1.2.0/SharedLibDeployer-compat-1.2.0-win64.7z
+    message(STATUS "Downloading and extracting SharedLibDeployer-compat-1.2.1-win64.7z")
+    set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-compat-1.2.1-win64.7z")
+    file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v1.2.1/SharedLibDeployer-compat-1.2.1-win64.7z
         ${archive_loc}
         EXPECTED_HASH SHA512=D2D8B8E269EC1C7178B05FE1A1E73E04F532A46314FC6BC1E8211189145B81609CCD763B78384F239878D5AE9F0AF7E0816472B1BFFB8BE8173BC5B934BBDE39)
 
