@@ -86,7 +86,7 @@ fn get_objdump_file(input:&str)->String {
         let install_prefix = current_exe.parent().expect("Get parent dir of current exe");
         //println!("install_prefix = {}",install_prefix.to_str().unwrap());
         let mut p = install_prefix.to_path_buf();
-        if !cfg!(target_os = "windows"){
+        if cfg!(target_os = "windows"){
             p.push("objdump.exe");
         }else {
             p.push("objdump");
@@ -156,11 +156,11 @@ impl Args {
 }
 
 fn parse_output_single_line(output: &str) -> &str {
-    let fail_msg = format!("Failed to parse dll name from output {output}");
-    let loc1 = output.find("DLL Name: ").expect(&fail_msg);
+    let fail_msg = format!("Failed to parse dll name from output \"{output}\"");
+    let loc1 = output.find("dll name: ").expect(&fail_msg);
     let loc2 = output.find(".dll").expect(&fail_msg);
 
-    let loc1 = loc1 + "DLL Name: ".len();
+    let loc1 = loc1 + "dll name: ".len();
     if loc1 + 1 >= loc2 {
         eprintln!("{}", fail_msg);
         exit(8);
@@ -179,12 +179,15 @@ fn get_dependencies(file: &str, objdump_file: &str) -> Vec<String> {
         exit(1);
     }
 
-    let output = String::from_utf8(output.stdout).expect("Failed to convert output to utf8");
+    let output = String::from_utf8(output.stdout)
+        .expect("Failed to convert output to utf8")
+        .replace('\r',"")
+        .to_lowercase();
     let split = output.split("\n");
     let mut dlls = Vec::with_capacity(split.clone().count());
-    //let regex=Regex::new(r"DLL Name: (.+)\.dll").unwrap();
+    //let regex=Regex::new(r"dll name: (.+)\.dll").unwrap();
     for line in split {
-        if !line.contains("DLL Name:") {
+        if !line.contains("dll name: ") {
             continue;
         }
 
@@ -333,8 +336,16 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
         println!("Deploying for \"{target_binary}\" at \"{target_dir}\"");
     }
     let deps = get_dependencies(target_binary, objdump_file);
+    if args.verbose {
+        println!("\"{target_binary}\" requires {:?}",deps)
+    }
 
     for dep in &deps {
+        if args.verbose {
+            println!("Searching ${dep} for \"{target_binary}\"")
+        }
+
+
         let expected_filename = format!("{target_dir}/{dep}");
         if let Ok(_) = std::fs::metadata(&expected_filename) {
             // the dll already exist
