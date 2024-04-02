@@ -44,9 +44,9 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
         return()
     endif ()
 
-    message(STATUS "Downloading and extracting SharedLibDeployer-1.2.2-win64.7z")
-    set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-1.2.2-win64.7z")
-    file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v1.2.2/SharedLibDeployer-1.2.2-win64.7z
+    message(STATUS "Downloading and extracting SharedLibDeployer-1.3.0-win64.7z")
+    set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-1.3.0-win64.7z")
+    file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v1.3.0/SharedLibDeployer-1.3.0-win64.7z
         ${archive_loc}
         EXPECTED_HASH SHA512=2EB112063210CBA6407218BDE1E1E2E04F78FBFABE5CEAAE242D21EE562ED6B71715E82662BDC39BE605CD09605188E63F6FE6C9C476A076F90EDBC77A8B7DE1)
 
