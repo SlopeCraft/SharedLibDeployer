@@ -11,11 +11,11 @@ target_link_libraries(test PRIVATE OpenMP::OpenMP_CXX)
 
 include(../DLLDeployer.cmake)
 
-DLLD_add_deploy(test ALL BUILD_MODE)
+DLLD_add_deploy(test ALL BUILD_MODE VERBOSE COPY_VC_REDIST)
 
 install(TARGETS test
     RUNTIME DESTINATION bin)
-DLLD_add_deploy(test INSTALL_MODE
+DLLD_add_deploy(test INSTALL_MODE COPY_VC_REDIST
         INSTALL_DESTINATION bin)
 
 include(CPack)

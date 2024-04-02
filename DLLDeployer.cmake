@@ -79,7 +79,7 @@ DLLD_get_deploy_dll_exe(DLLD_deploy_dll_executable_location DLLD_objdump_executa
 
 function(DLLD_add_deploy target_name)
     cmake_parse_arguments(DLLD_add_deploy
-            "BUILD_MODE;INSTALL_MODE;ALL"
+            "BUILD_MODE;INSTALL_MODE;ALL;VERBOSE;COPY_VC_REDIST"
             "INSTALL_DESTINATION"
             "IGNORE"
             ${ARGN})
@@ -108,12 +108,33 @@ function(DLLD_add_deploy target_name)
         set(filename "${filename}.dll")
     endif ()
 
-    set(ignore_tag "")
+    set(flags "")
     foreach (ignore_dll_name ${DLLD_add_deploy_IGNORE})
-        list(APPEND ignore_tag "--ignore=${ignore_dll_name}")
+        list(APPEND flags "--ignore=${ignore_dll_name}")
     endforeach ()
 
+    if(${DLLD_add_deploy_VERBOSE})
+        list(APPEND flags "--verbose")
+    endif ()
+
+    if(${DLLD_add_deploy_COPY_VC_REDIST})
+        list(APPEND flags "--copy-vc-redist")
+    endif ()
+
+    cmake_path(GET CMAKE_C_COMPILER PARENT_PATH c_compiler_path)
+    if(c_compiler_path)
+        list(APPEND flags "\"--shallow-search-dir=${c_compiler_path}\"")
+    endif ()
+    cmake_path(GET CMAKE_CXX_COMPILER PARENT_PATH cxx_compiler_path)
+    if((cxx_compiler_path) AND (NOT c_compiler_path STREQUAL cxx_compiler_path))
+        list(APPEND flags "\"--shallow-search-dir=${cxx_compiler_path}\"")
+    endif ()
+
     DLLD_replace_backslash(CMAKE_PREFIX_PATH CMAKE_PREFIX_PATH)
+
+    foreach (path ${CMAKE_PREFIX_PATH})
+        list(APPEND flags "\"--cmake-prefix-path=${path}\"")
+    endforeach ()
 
     if(${DLLD_add_deploy_BUILD_MODE})
         set(custom_target_name "DLLD_deploy_for_${target_name}")
@@ -127,18 +148,20 @@ function(DLLD_add_deploy target_name)
 
         add_custom_target(${custom_target_name}
             ${DLLD_all_tag}
-            COMMAND ${DLLD_deploy_dll_executable_location} ${filename} ${ignore_tag} "--cmake-prefix-path=${CMAKE_PREFIX_PATH}" "--objdump-file=${DLLD_objdump_executable_location}"
-            WORKING_DIRECTORY ${target_binary_dir})
-        add_dependencies(${custom_target_name} ${target_name})
+            COMMAND ${DLLD_deploy_dll_executable_location} ${filename} --objdump-file=${DLLD_objdump_executable_location} ${flags}
+            WORKING_DIRECTORY ${target_binary_dir}
+            DEPENDS ${target_name}
+            COMMENT "Deploy dll for ${target_name} at build directory"
+            COMMAND_EXPAND_LISTS)
     endif ()
 
     if(${DLLD_add_deploy_INSTALL_MODE})
 
+        string(JOIN " " flags ${flags})
+
         install(CODE
             "
-            message(STATUS \"CMAKE_SOURCE_DIR = \${CMAKE_SOURCE_DIR}\")
-            message(STATUS \"CMAKE_INSTALL_PREFIX = \${CMAKE_INSTALL_PREFIX}\")
-            execute_process(COMMAND ${DLLD_deploy_dll_executable_location} \"./${DLLD_add_deploy_INSTALL_DESTINATION}/${filename}\" ${ignore_tag} \"--cmake-prefix-path=${CMAKE_PREFIX_PATH}\" \"--objdump-file=${DLLD_objdump_executable_location}\"
+            execute_process(COMMAND \"${DLLD_deploy_dll_executable_location}\" \"./${DLLD_add_deploy_INSTALL_DESTINATION}/${filename}\" \"--objdump-file=${DLLD_objdump_executable_location}\" ${flags}
                 WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}
                 COMMAND_ERROR_IS_FATAL ANY)
             ")
