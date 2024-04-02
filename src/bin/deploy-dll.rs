@@ -342,7 +342,7 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
 
     for dep in &deps {
         if args.verbose {
-            println!("Searching ${dep} for \"{target_binary}\"")
+            println!("Searching {dep} for \"{target_binary}\"")
         }
 
 
