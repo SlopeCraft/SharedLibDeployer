@@ -26,7 +26,7 @@ jobs:
     - name: install deploy-dll
       run: cargo install --path .
 
-    - name: Install Qt and libzip
+    - name: Install Qt
       run: |
         cmd
         cd D:\a
@@ -34,9 +34,9 @@ jobs:
         7z x -oD:\a\Qt6 D:\a\Qt6.5.0-msvc-shared.7z
         exit
         tree /f D:\a\Qt6
-        
-        vcpkg install libzip --triplet=x64-windows
-           
+
+    - name: Install libzip
+      run: vcpkg install libzip --triplet=x64-windows
 
     - name: Test with command line
       run: |
@@ -44,8 +44,6 @@ jobs:
         cp C:/vcpkg/installed/x64-windows/bin/zip.dll ./test
         ls -l ./test
         deploy-dll ./test/zip.dll --cmake-prefix-path=C:/vcpkg/installed/x64-windows --verbose
-
-        
 
     - name: Test with cmake
       run: |
