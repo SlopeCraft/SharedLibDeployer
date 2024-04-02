@@ -30,12 +30,22 @@ jobs:
         ls -l ./test
         deploy-dll ./test/zip.dll --cmake-prefix-path=C:/vcpkg/installed/x64-windows --verbose
 
+    - name: Install Qt
+      run: |
+        cmd
+        cd /d D:\        
+        curl -JL -o D:\Qt6.5.0-msvc-shared.7z "https://github.com/SlopeCraft/QtBinaries/releases/download/qt6.5.0-x86_64-msvc-windows/Qt6.5.0-msvc-shared.7z"
+        7z x -oD:\Qt6 D:\Qt6.5.0-msvc-shared.7z
+        exit
+        tree /f D:\Qt6
+        
+
     - name: Test with cmake
       run: |
         choco install ninja
         cargo install --path .
         mkdir build
-        cmake -S ./tests -B ./build -G Ninja -DCMAKE_PREFIX_PATH=C:/vcpkg/installed/x64-windows -DCMAKE_INSTALL_PREFIX=install
+        cmake -S ./tests -B ./build -DCMAKE_PREFIX_PATH=C:/vcpkg/installed/x64-windows;D:\Qt6 -DCMAKE_INSTALL_PREFIX=install
         cmake --build ./build
         cd ./build
         cpack -G 7Z
