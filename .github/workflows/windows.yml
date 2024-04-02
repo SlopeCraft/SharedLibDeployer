@@ -50,7 +50,7 @@ jobs:
         choco install ninja
         cargo install --path .
         mkdir build
-        cmake -S ./tests -B ./build -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/toolchains/windows.cmake -DCMAKE_PREFIX_PATH="$basedir/Qt6;C:/vcpkg/installed/x64-windows" -DCMAKE_INSTALL_PREFIX=install
+        cmake -S ./tests -B ./build -G Ninja -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/toolchains/windows.cmake -DVCPKG_CRT_LINKAGE=dynamic -DCMAKE_PREFIX_PATH="$basedir/Qt6;C:/vcpkg/installed/x64-windows" -DCMAKE_INSTALL_PREFIX=install
         cmake --build ./build
         cd ./build
         cpack -G 7Z
