@@ -29,11 +29,11 @@ jobs:
     - name: Install Qt and libzip
       run: |
         cmd
-        cd /d C:\        
-        curl -JL -o C:\Qt6.5.0-msvc-shared.7z "https://github.com/SlopeCraft/QtBinaries/releases/download/qt6.5.0-x86_64-msvc-windows/Qt6.5.0-msvc-shared.7z"
-        7z x -oC:\Qt6 C:\Qt6.5.0-msvc-shared.7z
+        cd /d D:\a
+        curl -JL -o D:\a\Qt6.5.0-msvc-shared.7z "https://github.com/SlopeCraft/QtBinaries/releases/download/qt6.5.0-x86_64-msvc-windows/Qt6.5.0-msvc-shared.7z"
+        7z x -oD:\a\Qt6 D:\a\Qt6.5.0-msvc-shared.7z
         exit
-        tree /f C:\Qt6
+        tree /f D:\a\Qt6
         
         vcpkg install libzip --triplet=x64-windows
            
@@ -52,7 +52,7 @@ jobs:
         choco install ninja
         cargo install --path .
         mkdir build
-        cmake -S ./tests -B ./build -DCMAKE_PREFIX_PATH=C:/vcpkg/installed/x64-windows;D:\Qt6 -DCMAKE_INSTALL_PREFIX=install
+        cmake -S ./tests -B ./build -DCMAKE_PREFIX_PATH=C:/vcpkg/installed/x64-windows;D:\a\Qt6 -DCMAKE_INSTALL_PREFIX=install
         cmake --build ./build
         cd ./build
         cpack -G 7Z
