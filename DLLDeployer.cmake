@@ -153,6 +153,16 @@ function(DLLD_add_deploy target_name)
             DEPENDS ${target_name}
             COMMENT "Deploy dll for ${target_name} at build directory"
             COMMAND_EXPAND_LISTS)
+
+        if(NOT TARGET DLLD_deploy_all)
+            add_custom_target(DLLD_deploy_all
+                COMMENT "Build all targets like DLLD_deploy_for_*")
+        endif ()
+        add_dependencies(DLLD_deploy_all ${custom_target_name})
+
+        if(TARGET "QD_deploy_for_${target_name}")
+            add_dependencies(${custom_target_name} "QD_deploy_for_${target_name}")
+        endif ()
     endif ()
 
     if(${DLLD_add_deploy_INSTALL_MODE})
