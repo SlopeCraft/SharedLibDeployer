@@ -117,7 +117,7 @@ function(DLLD_add_deploy target_name)
     cmake_parse_arguments(DLLD_add_deploy
             "BUILD_MODE;INSTALL_MODE;ALL;VERBOSE;COPY_VC_REDIST"
             "INSTALL_DESTINATION"
-            "IGNORE;FLAGS"
+            "IGNORE;OPTIONAL_DLLS;FLAGS"
             ${ARGN})
 
     # Check target type
@@ -167,6 +167,10 @@ function(DLLD_add_deploy target_name)
     endif ()
 
     list(APPEND flags "\"--deep-search-dir=${CMAKE_BINARY_DIR}\"")
+
+    foreach (item in ${DLLD_add_deploy_OPTIONAL_DLLS})
+        list(APPEND flags "\"--optional-dlls=${item}\"")
+    endforeach ()
 
     DLLD_replace_backslash(CMAKE_PREFIX_PATH CMAKE_PREFIX_PATH)
 
