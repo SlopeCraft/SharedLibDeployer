@@ -1,12 +1,18 @@
+use std::collections::{HashSet};
 use std::path::{Path, PathBuf};
 use std::process::{Command, exit};
 use clap::Parser;
+use glob;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = "Deploy dll for exe or dll.")]
 struct Args {
     /// The target file to deploy dll for. This can be an exe or dll.
     binary_file: String,
+
+    /// Relative paths to DLLs that is linked optionally, for example: `imageformats/jpeg.dll` for Qt
+    #[arg(long)]
+    optional_dlls:Vec<String>,
 
     /// Do not search in system variable PATH
     #[arg(long, default_value_t = false)]
@@ -153,6 +159,35 @@ impl Args {
 
         return vec;
     }
+
+    fn optional_dll_abs_path(&self)->Vec<String> {
+
+        let mut paths=HashSet::with_capacity(self.optional_dlls.len());
+
+        let target_dir_path = PathBuf::from(&self.binary_file).parent().unwrap().to_path_buf();
+        for opt_dll in &self.optional_dlls {
+            for opt_dll in opt_dll.split(';') {
+                let mut target_dir_path=target_dir_path.clone();
+                target_dir_path.push(opt_dll);
+                if opt_dll.contains('*') { // is globbing
+                    for entry in glob::glob(target_dir_path.to_str().unwrap()).expect("Globbing") {
+                        paths.insert(entry.expect("Globbing"));
+                    }
+                }else {
+                    paths.insert(target_dir_path);
+                }
+            }
+        }
+
+        let mut paths_str=Vec::with_capacity(paths.len());
+
+        for p in &paths {
+            paths_str.push(p.to_str().unwrap().to_string());
+        }
+
+
+        return paths_str;
+    }
 }
 
 fn parse_output_single_line(output: &str) -> &str {
@@ -199,7 +234,21 @@ fn get_dependencies(file: &str, objdump_file: &str) -> Vec<String> {
 }
 
 fn is_vc_redist_dll(name: &str) -> bool {
-    return name.starts_with("api-ms-win");
+    let name=name.to_lowercase();
+    if name.starts_with("api-ms-win") {
+        return true;
+    }
+    if name.starts_with("vcruntime") {
+        return true;
+    }
+    if name.starts_with("msvcrt") {
+        return true;
+    }
+    if name.starts_with("msvcp") {
+        return true;
+    }
+
+    return false;
 }
 
 fn is_system_dll(name: &str) -> bool {
@@ -363,8 +412,17 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
             continue;
         }
 
+        let is_vc_redist=is_vc_redist_dll(dep);
 
-        if is_system_dll(dep) {
+        if !args.copy_vc_redist && is_vc_redist {
+            // Skip vc redist dll.
+            if args.verbose {
+                println!("Skip VC redistributable dll {dep}");
+            }
+            continue;
+        }
+
+        if is_system_dll(dep) && !is_vc_redist {
             // Skip system dll
             if args.verbose {
                 println!("Skip system dll {dep}");
@@ -372,13 +430,6 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
             continue;
         }
 
-        if !args.copy_vc_redist && is_vc_redist_dll(dep) {
-            // Skip vc redist dll.
-            if args.verbose {
-                println!("Skip VC redistributable dll {dep}");
-            }
-            continue;
-        }
 
 
         if args.verbose {
@@ -458,11 +509,22 @@ fn main() {
         println!("Using objdump at {objdump_loc}");
     }
 
-    let target_dir = PathBuf::from(&args.binary_file);
-    let target_dir = target_dir.parent().unwrap().to_str().unwrap();
+    let target_dir_path = PathBuf::from(&args.binary_file).parent().unwrap().to_path_buf();
+    let target_dir = target_dir_path.to_str().unwrap();
     let format = get_file_format(&args.binary_file, &args.objdump_file());
     if args.verbose {
         println!("Binary format: \"{format}\"");
     }
     deploy_dll(&args.binary_file, target_dir, &objdump_loc, &format, &args);
+
+    for dep in &args.optional_dll_abs_path() {
+
+        let mut dep_path=target_dir_path.clone();
+        dep_path.push(dep);
+        let dep_path=dep_path.to_str().unwrap();
+        if args.verbose {
+            println!("Deploying for optional dll {dep_path}");
+        }
+        deploy_dll(dep_path,target_dir, &objdump_loc, &format, &args);
+    }
 }
