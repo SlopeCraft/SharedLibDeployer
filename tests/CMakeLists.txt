@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.20)
-project(DLLDeployerWindowsTest LANGUAGES C CXX VERSION 1.3.0)
+cmake_minimum_required(VERSION 3.25)
+project(DLLDeployerWindowsTest LANGUAGES C CXX VERSION 1.4.0)
 
 add_executable(test test.cpp)
 

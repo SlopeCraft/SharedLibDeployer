@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.25)
+
+set(DLLD_deploy_dll_exe_version "1.4.0")
 
 # Replace backslash \ with slash /
 function(DLLD_replace_backslash in_var out_var)
@@ -8,6 +10,39 @@ function(DLLD_replace_backslash in_var out_var)
         list(APPEND temp ${item})
     endforeach ()
     set(${out_var} ${temp} PARENT_SCOPE)
+endfunction()
+
+function(DLLD_validate_deploy_dll_exe exe_location out_error)
+    unset(${out_error} PARENT_SCOPE)
+
+    execute_process(COMMAND ${exe_location} --version
+        OUTPUT_VARIABLE output
+        COMMAND_ERROR_IS_FATAL ANY)
+
+    string(REPLACE " " ";" splitted_output ${output})
+    list(LENGTH splitted_output len)
+    if(${len} LESS 2)
+        set(${out_error} "Failed to deduce version from output \"${output}\"" PARENT_SCOPE)
+        return()
+    endif ()
+
+    list(GET splitted_output 1 this_version)
+    if(${this_version} VERSION_LESS ${DLLD_deploy_dll_exe_version})
+        set(${out_error} "Required at least ${DLLD_deploy_dll_exe_version}, but found ${this_version}" PARENT_SCOPE)
+        return()
+    endif ()
+
+    set(${out_error} "" PARENT_SCOPE)
+endfunction()
+
+function(DLLD_find_dll_deployer_validator validator_result_var item)
+    DLLD_validate_deploy_dll_exe(${item} error)
+    if(error)
+        message(STATUS "Skip ${item} because ${error}")
+        set(${validator_result_var} FALSE PARENT_SCOPE)
+    else ()
+        set(${validator_result_var} TRUE PARENT_SCOPE)
+    endif ()
 endfunction()
 
 function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
@@ -22,6 +57,7 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
     find_program(exe_path
         NAMES "deploy-dll"
         HINTS ${extract_destination}/bin
+        VALIDATOR DLLD_find_dll_deployer_validator
         NO_CACHE)
     if(exe_path)
         message(STATUS "Found ${exe_path}")
@@ -33,7 +69,7 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
     find_program(objdump_path
         NAMES "objdump"
         HINTS ${extract_destination}/bin
-            NO_CACHE)
+        NO_CACHE)
     if(objdump_path)
         message(STATUS "Found ${objdump_path}")
         set(${out_objdump} ${objdump_path} PARENT_SCOPE)
@@ -44,9 +80,9 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
         return()
     endif ()
 
-    message(STATUS "Downloading and extracting SharedLibDeployer-1.3.0-win64.7z")
-    set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-1.3.0-win64.7z")
-    file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v1.3.0/SharedLibDeployer-1.3.0-win64.7z
+    message(STATUS "Downloading and extracting SharedLibDeployer-${DLLD_deploy_dll_exe_version}-win64.7z")
+    set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-${DLLD_deploy_dll_exe_version}-win64.7z")
+    file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v${DLLD_deploy_dll_exe_version}/SharedLibDeployer-${DLLD_deploy_dll_exe_version}-win64.7z
         ${archive_loc}
         EXPECTED_HASH SHA512=5B2AC756A922BE06E0EFE88AA157A8A626B62A64D5EC3B19BF65A3581F3E98515B29BC21F9AB346DA4C6F35A4104364780144100645534DCD123867C02297755)
 
