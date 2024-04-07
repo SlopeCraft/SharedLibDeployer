@@ -169,7 +169,7 @@ function(DLLD_add_deploy target_name)
 
     list(APPEND flags "\"--deep-search-dir=${CMAKE_BINARY_DIR}\"")
 
-    foreach (item in ${DLLD_add_deploy_OPTIONAL_DLLS})
+    foreach (item ${DLLD_add_deploy_OPTIONAL_DLLS})
         list(APPEND flags "\"--optional-dlls=${item}\"")
     endforeach ()
 
