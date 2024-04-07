@@ -24,7 +24,7 @@ install(TARGETS test
 QD_add_deployqt(test INSTALL_MODE
         INSTALL_DESTINATION bin
         FLAGS "-release;--no-translations")
-DLLD_add_deploy(test INSTALL_MODE COPY_VC_REDIST
+DLLD_add_deploy(test INSTALL_MODE COPY_VC_REDIST VERBOSE
         INSTALL_DESTINATION bin
         OPTIONAL_DLLS "generic/*.dll;imageformats/*.dll;networkinformation/*.dll;platforms/*.dll;styles/*.dll;tls/*.dll")
 
