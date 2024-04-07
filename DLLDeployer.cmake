@@ -84,7 +84,8 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
     set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-${DLLD_deploy_dll_exe_version}-win64.7z")
     file(DOWNLOAD https://github.com/ToKiNoBug/SharedLibDeployer/releases/download/v${DLLD_deploy_dll_exe_version}/SharedLibDeployer-${DLLD_deploy_dll_exe_version}-win64.7z
         ${archive_loc}
-        EXPECTED_HASH SHA512=5B2AC756A922BE06E0EFE88AA157A8A626B62A64D5EC3B19BF65A3581F3E98515B29BC21F9AB346DA4C6F35A4104364780144100645534DCD123867C02297755)
+        EXPECTED_HASH SHA512=A8CDF28B53697B53D3B737888703B537DDAD151D06116D71A4196E8388C1D6F446455B02268656007FBFAEA5C6853AD4721C731228E2781E73E68176AD0A862B
+    )
 
     file(ARCHIVE_EXTRACT INPUT ${archive_loc} DESTINATION ${extract_destination})
 
