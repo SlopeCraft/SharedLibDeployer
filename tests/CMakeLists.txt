@@ -9,8 +9,8 @@ target_link_libraries(test PRIVATE libzip::zip)
 find_package(OpenMP REQUIRED)
 target_link_libraries(test PRIVATE OpenMP::OpenMP_CXX)
 
-find_package(Qt6 COMPONENTS Core Widgets REQUIRED)
-target_link_libraries(test PRIVATE Qt6::Core Qt6::Widgets)
+find_package(Qt6 COMPONENTS Core Widgets Network REQUIRED)
+target_link_libraries(test PRIVATE Qt6::Core Qt6::Widgets Qt6::Network)
 target_compile_definitions(test PRIVATE QT_SUPPORT=1)
 
 include(../DLLDeployer.cmake)

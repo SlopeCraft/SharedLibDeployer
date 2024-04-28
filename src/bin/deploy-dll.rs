@@ -55,6 +55,12 @@ struct Args {
     allow_missing: bool,
 }
 
+#[derive(Default)]
+struct Context {
+    deployed_dlls:HashSet<PathBuf>
+}
+
+
 fn existing_var_path(dest: &mut Vec<String>) {
     if let Ok(path) = std::env::var("PATH") {
         for path in path.split(';') {
@@ -380,7 +386,7 @@ fn search_dll_shallow(name: &str, args: &Args, validate: Option<&dyn Fn(&Path) -
 }
 
 
-fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_format: &str, args: &Args) {
+fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_format: &str, args: &Args,context: &mut Context) {
     if args.verbose {
         println!("Deploying for \"{target_binary}\" at \"{target_dir}\"");
     }
@@ -396,11 +402,11 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
 
 
         let expected_filename = format!("{target_dir}/{dep}");
-        if let Ok(_) = std::fs::metadata(&expected_filename) {
-            // the dll already exist
-            if args.verbose {
-                println!("{expected_filename} already exists");
-            }
+        let expected_filename_path=PathBuf::from(expected_filename.clone());
+        let dll_exist=std::fs::metadata(&expected_filename).is_ok();
+
+        if dll_exist && args.verbose && context.deployed_dlls.contains(&expected_filename_path) {
+            println!("{expected_filename} is already deployed");
             continue;
         }
 
@@ -431,54 +437,56 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
         }
 
 
+        if !dll_exist {
 
-        if args.verbose {
-            println!("Searching {dep} for {target_binary}");
-        }
-        // search for it
-        let mut loc = None;
-
-        let validator = |loc: &Path| {
-            let format = get_file_format(loc.to_str().unwrap(), objdump_file);
-            if format != binary_format {
-                return Err(format!("DLL architecture mismatch. Expected {binary_format}, but found {format}"));
-            }
-            return Ok(());
-        };
-        let validator = Box::new(validator);
-
-        // try shallow search first
-        if let None = &loc {
-            if !args.no_shallow_search {
-                if let Some(location) = search_dll_shallow(dep, args, Some(&validator)) {
-                    loc = Some(location);
-                }
-            }
-        }
-        if let None = &loc {
-            if !args.no_deep_search {
-                if let Some(location) = search_dll_deep(dep, args, Some(&validator)) {
-                    loc = Some(location);
-                }
-            }
-        }
-
-        if let Some(location) = &loc {
             if args.verbose {
-                println!("Copying \"{location}\" to \"{target_dir}\"");
+                println!("Searching {dep} for {target_binary}");
             }
-            std::fs::copy(location, &expected_filename).expect("Failed to copy dll");
-        } else if args.allow_missing {
-            println!("Failed to find dll \"{dep}\", required by \"{target_binary}\"");
-            continue;
-        } else {
-            eprintln!("Failed to find dll \"{dep}\", required by \"{target_binary}\"");
-            exit(1);
+            // search for it
+            let mut loc = None;
+
+            let validator = |loc: &Path| {
+                let format = get_file_format(loc.to_str().unwrap(), objdump_file);
+                if format != binary_format {
+                    return Err(format!("DLL architecture mismatch. Expected {binary_format}, but found {format}"));
+                }
+                return Ok(());
+            };
+            let validator = Box::new(validator);
+
+            // try shallow search first
+            if let None = &loc {
+                if !args.no_shallow_search {
+                    if let Some(location) = search_dll_shallow(dep, args, Some(&validator)) {
+                        loc = Some(location);
+                    }
+                }
+            }
+            if let None = &loc {
+                if !args.no_deep_search {
+                    if let Some(location) = search_dll_deep(dep, args, Some(&validator)) {
+                        loc = Some(location);
+                    }
+                }
+            }
+
+            if let Some(location) = &loc {
+                if args.verbose {
+                    println!("Copying \"{location}\" to \"{target_dir}\"");
+                }
+                std::fs::copy(location, &expected_filename).expect("Failed to copy dll");
+            } else if args.allow_missing {
+                println!("Failed to find dll \"{dep}\", required by \"{target_binary}\"");
+                continue;
+            } else {
+                eprintln!("Failed to find dll \"{dep}\", required by \"{target_binary}\"");
+                exit(1);
+            }
         }
 
-
-        deploy_dll(&expected_filename, target_dir, objdump_file, binary_format, args);
+        deploy_dll(&expected_filename, target_dir, objdump_file, binary_format, args,context);
     }
+    context.deployed_dlls.insert(PathBuf::from(target_binary));
 }
 
 fn main() {
@@ -515,7 +523,8 @@ fn main() {
     if args.verbose {
         println!("Binary format: \"{format}\"");
     }
-    deploy_dll(&args.binary_file, target_dir, &objdump_loc, &format, &args);
+    let mut context=Context::default();
+    deploy_dll(&args.binary_file, target_dir, &objdump_loc, &format, &args,&mut context);
 
     for dep in &args.optional_dll_abs_path() {
 
@@ -525,6 +534,6 @@ fn main() {
         if args.verbose {
             println!("Deploying for optional dll {dep_path}");
         }
-        deploy_dll(dep_path,target_dir, &objdump_loc, &format, &args);
+        deploy_dll(dep_path,target_dir, &objdump_loc, &format, &args,&mut context);
     }
 }

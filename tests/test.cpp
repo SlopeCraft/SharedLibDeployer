@@ -1,18 +1,21 @@
 #include <iostream>
 #include <omp.h>
 #include <zip.h>
+
 #ifdef QT_SUPPORT
-#include <QCoreApplication>
+#include <QApplication>
 #include <QMainWindow>
+#include <QNetworkAccessManager>
 #endif
 
 int main(int argc, char **argv) {
 
 #ifdef QT_SUPPORT
-  QCoreApplication qapp{argc, argv};
+  QApplication qapp{argc, argv};
 
   QMainWindow wind;
   wind.show();
+  QNetworkAccessManager manager;
 #endif
 
   omp_set_num_threads(20);
