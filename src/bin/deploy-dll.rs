@@ -497,9 +497,7 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
             }
 
             if let Some(location) = &loc {
-                if args.verbose {
-                    println!("Copying \"{location}\" to \"{target_dir}\"");
-                }
+                println!("Copying \"{location}\" to \"{target_dir}\"");
                 std::fs::copy(location, &expected_filename).expect("Failed to copy dll");
             } else if args.allow_missing {
                 println!("Failed to find dll \"{dep}\", required by \"{target_binary}\"");
