@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-set(DLLD_deploy_dll_exe_version "1.5.0")
+set(DLLD_deploy_dll_exe_version "1.5.1")
 
 # Replace backslash \ with slash /
 function(DLLD_replace_backslash in_var out_var)
@@ -84,7 +84,7 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
     set(archive_loc "${PROJECT_BINARY_DIR}/SharedLibDeployer-${DLLD_deploy_dll_exe_version}-win64.7z")
     file(DOWNLOAD https://github.com/SlopeCraft/SharedLibDeployer/releases/download/v${DLLD_deploy_dll_exe_version}/SharedLibDeployer-${DLLD_deploy_dll_exe_version}-win64.7z
         ${archive_loc}
-        EXPECTED_HASH SHA512=3C5F28A5C44A18EBB0D717913A441EF67D50ACC2B9121B8A8F86BEF7FDFE3AA2618531F9C04DA7635AD3FF789A4CCD75F022EED450413B7DFF7AEF20D906871F
+        EXPECTED_HASH SHA512=9EAC9586417FF351F3CB2FF965734AF7AA5029406EAAA282CF9507375E5E4A4B35DFFF12A974E36917F440D3443EFF366576B563C9E7F02DD9A54965D706985D
     )
 
     file(ARCHIVE_EXTRACT INPUT ${archive_loc} DESTINATION ${extract_destination})
