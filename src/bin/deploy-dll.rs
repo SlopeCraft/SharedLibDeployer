@@ -166,6 +166,32 @@ impl Args {
         return vec;
     }
 
+
+    fn target_binary_abs_path(&self)->Vec<String> {
+        let mut paths =HashSet::new();
+        let target_dir_path = PathBuf::from(&self.binary_file).parent().unwrap().to_path_buf();
+        for dll in self.binary_file.split(';') {
+            let mut target_dir_path=target_dir_path.clone();
+            target_dir_path.push(dll);
+            if dll.contains('*') {
+                let glob_str=target_dir_path.to_str().expect("Convert globbing path into string");
+                let err=format!("Globbing with \"{glob_str}\"");
+                for entry in glob::glob(glob_str).expect(&err) {
+                    paths.insert(entry.expect(&err));
+                }
+            }else {
+                paths.insert(target_dir_path);
+            }
+        }
+
+        let mut paths_str =Vec::with_capacity(paths.len());
+        for p in &paths {
+            paths_str.push(p.to_str().expect("Convert PathBuf to String").to_string());
+        }
+
+        return paths_str;
+    }
+
     fn optional_dll_abs_path(&self)->Vec<String> {
 
         let mut paths=HashSet::with_capacity(self.optional_dlls.len());
@@ -493,23 +519,19 @@ fn main() {
     let mut args = Args::parse();
     {
         let target = PathBuf::from(&args.binary_file);
-        if !is_file(&target) {
-            eprintln!("The given target \"{}\" is not a file",target.display());
-            exit(5);
-        }
         if target.is_relative() {
             if args.verbose {
                 print!("The given binary path \"{}\" is a relative path, ", &args.binary_file);
             }
             let mut new_target = std::env::current_dir().unwrap();
-            new_target.push(target);
+            new_target.push(target.clone());
             let new_target = new_target.to_str().unwrap().to_string();
             if args.verbose {
                 println!("converted to \"{new_target}\"")
             }
             args.binary_file = new_target;
-            assert!(is_file(&args.binary_file));
         }
+
     }
 
     let objdump_loc=args.objdump_file();
@@ -523,8 +545,15 @@ fn main() {
     if args.verbose {
         println!("Binary format: \"{format}\"");
     }
+
     let mut context=Context::default();
-    deploy_dll(&args.binary_file, target_dir, &objdump_loc, &format, &args,&mut context);
+    for binary_file in args.target_binary_abs_path() {
+        if !is_file(&binary_file) {
+            eprintln!("Given target \"{}\" is not a file",binary_file);
+            exit(5);
+        }
+        deploy_dll(&binary_file, target_dir, &objdump_loc, &format, &args,&mut context);
+    }
 
     for dep in &args.optional_dll_abs_path() {
 
