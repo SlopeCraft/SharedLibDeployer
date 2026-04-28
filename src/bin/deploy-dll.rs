@@ -1,8 +1,10 @@
 use std::collections::{HashSet};
 use std::path::{Path, PathBuf};
 use std::process::{Command, exit};
-use clap::Parser;
+use clap::{Error, Parser};
 use glob;
+use pelite::pe::{Pe, PeFile, PeObject};
+use pelite::pe64;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = "Deploy dll for exe or dll.")]
@@ -222,48 +224,70 @@ impl Args {
     }
 }
 
-fn parse_output_single_line(output: &str) -> &str {
-    let fail_msg = format!("Failed to parse dll name from output \"{output}\"");
-    let loc1 = output.find("dll name: ").expect(&fail_msg);
-    let loc2 = output.find(".dll").expect(&fail_msg);
+// fn parse_output_single_line(output: &str) -> &str {
+//     let fail_msg = format!("Failed to parse dll name from output \"{output}\"");
+//     let loc1 = output.find("dll name: ").expect(&fail_msg);
+//     let loc2 = output.find(".dll").expect(&fail_msg);
 
-    let loc1 = loc1 + "dll name: ".len();
-    if loc1 + 1 >= loc2 {
-        eprintln!("{}", fail_msg);
-        exit(8);
+//     let loc1 = loc1 + "dll name: ".len();
+//     if loc1 + 1 >= loc2 {
+//         eprintln!("{}", fail_msg);
+//         exit(8);
+//     }
+
+//     return &output[loc1..loc2];
+// }
+fn get_dependencies(file: &str, _objdump_file: &str) -> Vec<String> {
+    let map = pelite::FileMap::open(file).unwrap();
+    // if let Err(e) = pelite::FileMap::open(file) {
+    //     return Err(pelite::Error::from(e));
+    // }
+    // let map = ?;
+    let image  = PeFile::from_bytes(&map).unwrap();
+    let imports  = image.imports().unwrap();
+    
+    let mut ret:Vec<String> = Vec::new();
+    for desc in imports {
+        let name = desc.dll_name().unwrap().to_string();
+        ret.push(name);
     }
 
-    return &output[loc1..loc2];
+    print!("{} imports: [",file);
+    for name in &ret {
+        print!("{}, ",name)
+    }
+    println!("]");
+    return ret;
+    // todo!()
 }
+// fn get_dependencies(file: &str, objdump_file: &str) -> Vec<String> {
+//     let output = Command::new(objdump_file).args([file, "-x", "--section=.rdata"]).output()
+//         .expect(&format!("Failed to run objdump at {}", objdump_file));
 
-fn get_dependencies(file: &str, objdump_file: &str) -> Vec<String> {
-    let output = Command::new(objdump_file).args([file, "-x", "--section=.rdata"]).output()
-        .expect(&format!("Failed to run objdump at {}", objdump_file));
+//     if !output.status.success() {
+//         eprintln!("{} {} -x failed with error code {}", objdump_file, file, output.status.to_string());
+//         eprintln!("The std error is: {}", String::from_utf8(output.stderr).unwrap());
+//         exit(1);
+//     }
 
-    if !output.status.success() {
-        eprintln!("{} {} -x failed with error code {}", objdump_file, file, output.status.to_string());
-        eprintln!("The std error is: {}", String::from_utf8(output.stderr).unwrap());
-        exit(1);
-    }
+//     let output = String::from_utf8(output.stdout)
+//         .expect("Failed to convert output to utf8")
+//         .replace('\r',"")
+//         .to_lowercase();
+//     let split = output.split("\n");
+//     let mut dlls = Vec::with_capacity(split.clone().count());
+//     //let regex=Regex::new(r"dll name: (.+)\.dll").unwrap();
+//     for line in split {
+//         if !line.contains("dll name: ") {
+//             continue;
+//         }
 
-    let output = String::from_utf8(output.stdout)
-        .expect("Failed to convert output to utf8")
-        .replace('\r',"")
-        .to_lowercase();
-    let split = output.split("\n");
-    let mut dlls = Vec::with_capacity(split.clone().count());
-    //let regex=Regex::new(r"dll name: (.+)\.dll").unwrap();
-    for line in split {
-        if !line.contains("dll name: ") {
-            continue;
-        }
-
-        let mut str = parse_output_single_line(line).to_string();
-        str.push_str(".dll");
-        dlls.push(str);
-    }
-    return dlls;
-}
+//         let mut str = parse_output_single_line(line).to_string();
+//         str.push_str(".dll");
+//         dlls.push(str);
+//     }
+//     return dlls;
+// }
 
 fn is_vc_redist_dll(name: &str) -> bool {
     let name=name.to_lowercase();
