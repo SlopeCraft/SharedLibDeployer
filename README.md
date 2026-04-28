@@ -127,11 +127,6 @@ Options:
       --ignore <IGNORE>
           Dll files that won't be deployed
 
-      --objdump-file <OBJDUMP_FILE>
-          Location of dumpbin file
-
-          [default: [builtin]]
-
   -h, --help
           Print help (see a summary with '-h')
 
