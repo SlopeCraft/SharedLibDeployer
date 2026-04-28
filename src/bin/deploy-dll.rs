@@ -165,7 +165,7 @@ impl Args {
     }
 }
 
-fn get_dependencies(file: &str) -> Vec<String> {
+fn get_dependencies(file: &str, args: &Args) -> Vec<String> {
     let map = pelite::FileMap::open(file).unwrap();
     let image = PeFile::from_bytes(&map).unwrap();
 
@@ -177,7 +177,15 @@ fn get_dependencies(file: &str) -> Vec<String> {
 
     let mut ret: Vec<String> = Vec::new();
     for desc in imports {
-        let name = desc.dll_name().unwrap().to_string();
+        let name = desc.dll_name().unwrap().to_string().to_lowercase();
+        let is_not_dll = !name.ends_with(".dll");
+        if is_not_dll && args.verbose {
+            println!("\"{file}\" requires \"{name}\", skipping this non-dll item.")
+        }
+        if is_not_dll {
+            continue;
+        }
+
         ret.push(name);
     }
     return ret;
@@ -3713,7 +3721,7 @@ fn deploy_dll(target_binary: &str, target_dir: &str, args: &Args, context: &mut 
     if args.verbose {
         println!("Deploying for \"{target_binary}\" at \"{target_dir}\"");
     }
-    let deps = get_dependencies(target_binary);
+    let deps = get_dependencies(target_binary, args);
     if args.verbose {
         println!("\"{target_binary}\" requires {:?}", deps)
     }
