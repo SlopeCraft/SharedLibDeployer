@@ -64,7 +64,7 @@ jobs:
         deploy-dll ./target/make-package/bin/deploy-dll.exe --shallow-search-dir=C:/mingw64/bin
 
     - name: Upload package
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: SharedLibDeployer-1.0.0-win64
         path: target/make-package
