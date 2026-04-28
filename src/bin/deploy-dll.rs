@@ -1,10 +1,9 @@
-use std::collections::{HashSet};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::process::{Command, exit};
-use clap::{Error, Parser};
+use std::process::exit;
+use clap::Parser;
 use glob;
-use pelite::pe::{Pe, PeFile, PeObject};
-use pelite::pe64;
+use pelite::pe::{Pe, PeFile};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = "Deploy dll for exe or dll.")]
@@ -360,7 +359,7 @@ fn deploy_dll(target_binary: &str, target_dir: &str, args: &Args,context: &mut C
             // search for it
             let mut loc = None;
 
-            let validator = |loc: &Path| {
+            let validator = |_loc: &Path| {
                 // let format = get_file_format(loc.to_str().unwrap());
                 return Ok(());
             };
