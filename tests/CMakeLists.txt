@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(DLLDeployerWindowsTest LANGUAGES C CXX VERSION 1.5.1)
+project(DLLDeployerWindowsTest LANGUAGES CXX VERSION 1.6.0)
 
 add_executable(test test.cpp)
 
@@ -17,15 +17,23 @@ include(../DLLDeployer.cmake)
 include(../QtDeployer.cmake)
 
 QD_add_deployqt(test BUILD_MODE FLAGS "-release;--no-translations")
-DLLD_add_deploy(test ALL BUILD_MODE VERBOSE COPY_VC_REDIST)
+DLLD_add_deploy(test ALL 
+    BUILD_MODE 
+    VERBOSE 
+    # COPY_VC_REDIST
+)
 
 install(TARGETS test
     RUNTIME DESTINATION bin)
 QD_add_deployqt(test INSTALL_MODE
-        INSTALL_DESTINATION bin
-        FLAGS "-release;--no-translations")
-DLLD_add_deploy(test INSTALL_MODE COPY_VC_REDIST VERBOSE
-        INSTALL_DESTINATION bin
-        OPTIONAL_DLLS "generic/*.dll;imageformats/*.dll;networkinformation/*.dll;styles/*.dll;tls/*.dll")
+    INSTALL_DESTINATION bin
+    FLAGS "-release;--no-translations"
+)
+DLLD_add_deploy(test INSTALL_MODE 
+    #COPY_VC_REDIST 
+    VERBOSE
+    INSTALL_DESTINATION bin
+    OPTIONAL_DLLS "generic/*.dll;imageformats/*.dll;networkinformation/*.dll;styles/*.dll;tls/*.dll"
+)   
 
 include(CPack)

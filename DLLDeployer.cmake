@@ -45,9 +45,8 @@ function(DLLD_find_dll_deployer_validator validator_result_var item)
     endif ()
 endfunction()
 
-function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
+function(DLLD_get_deploy_dll_exe out_deploy_dll)
     unset(${out_deploy_dll} PARENT_SCOPE)
-    unset(${out_objdump} PARENT_SCOPE)
 
     set(extract_destination "${PROJECT_BINARY_DIR}/3rdParty/SharedLibDeployer")
 
@@ -62,17 +61,6 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
     if(exe_path)
         message(STATUS "Found ${exe_path}")
         set(${out_deploy_dll} ${exe_path} PARENT_SCOPE)
-        math(EXPR found_components "${found_components} + 1")
-    endif ()
-
-    message(STATUS "Searching for objdump executable")
-    find_program(objdump_path
-        NAMES "objdump"
-        HINTS ${extract_destination}/bin
-        NO_CACHE)
-    if(objdump_path)
-        message(STATUS "Found ${objdump_path}")
-        set(${out_objdump} ${objdump_path} PARENT_SCOPE)
         math(EXPR found_components "${found_components} + 1")
     endif ()
 
@@ -95,24 +83,9 @@ function(DLLD_get_deploy_dll_exe out_deploy_dll out_objdump)
     endif ()
     DLLD_replace_backslash(extracted_deploy_dll_exe extracted_deploy_dll_exe)
     set(${out_deploy_dll} ${extracted_deploy_dll_exe} PARENT_SCOPE)
-
-    set(extracted_objdump_exe "${extract_destination}/bin/objdump.exe")
-    if(NOT EXISTS ${extracted_objdump_exe})
-        message(FATAL_ERROR "${archive_loc} was extracted, but \"${extracted_objdump_exe}\" was not found")
-    endif ()
-    DLLD_replace_backslash(extracted_objdump_exe extracted_objdump_exe)
-    set(${out_objdump} ${extracted_objdump_exe} PARENT_SCOPE)
-
-
-#    message(STATUS "Searching for cargo")
-#    find_program(cargo_path NAMES cargo)
-#    if(cargo_path)
-#        message(STATUS "Cloning ")
-#    endif ()
-
 endfunction()
 
-DLLD_get_deploy_dll_exe(DLLD_deploy_dll_executable_location DLLD_objdump_executable_location)
+DLLD_get_deploy_dll_exe(DLLD_deploy_dll_executable_location)
 
 function(DLLD_add_deploy target_name)
     cmake_parse_arguments(DLLD_add_deploy
@@ -158,14 +131,18 @@ function(DLLD_add_deploy target_name)
         list(APPEND flags "--copy-vc-redist")
     endif ()
 
-    cmake_path(GET CMAKE_C_COMPILER PARENT_PATH c_compiler_path)
-    if(c_compiler_path)
-        list(APPEND flags "\"--shallow-search-dir=${c_compiler_path}\"")
-    endif ()
+    if(DEFINED CMAKE_C_COMPILER)
+        cmake_path(GET CMAKE_C_COMPILER PARENT_PATH c_compiler_path)
+        if(c_compiler_path)
+            list(APPEND flags "\"--shallow-search-dir=${c_compiler_path}\"")
+        endif ()
+    endif()
+    if(DEFINED CMAKE_CXX_COMPILER)
     cmake_path(GET CMAKE_CXX_COMPILER PARENT_PATH cxx_compiler_path)
     if((cxx_compiler_path) AND (NOT c_compiler_path STREQUAL cxx_compiler_path))
         list(APPEND flags "\"--shallow-search-dir=${cxx_compiler_path}\"")
     endif ()
+    endif()
 
     list(APPEND flags "\"--deep-search-dir=${CMAKE_BINARY_DIR}\"")
 
@@ -193,7 +170,7 @@ function(DLLD_add_deploy target_name)
 
         add_custom_target(${custom_target_name}
             ${DLLD_all_tag}
-            COMMAND ${DLLD_deploy_dll_executable_location} ${filename} --objdump-file=${DLLD_objdump_executable_location} ${flags}
+            COMMAND ${DLLD_deploy_dll_executable_location} ${filename} ${flags}
             WORKING_DIRECTORY ${target_binary_dir}
             DEPENDS ${target_name}
             COMMENT "Deploy dll for ${target_name} at build directory"
@@ -216,7 +193,7 @@ function(DLLD_add_deploy target_name)
 
         install(CODE
             "
-            execute_process(COMMAND \"${DLLD_deploy_dll_executable_location}\" \"./${DLLD_add_deploy_INSTALL_DESTINATION}/${filename}\" \"--objdump-file=${DLLD_objdump_executable_location}\" ${flags}
+            execute_process(COMMAND \"${DLLD_deploy_dll_executable_location}\" \"./${DLLD_add_deploy_INSTALL_DESTINATION}/${filename}\" ${flags}
                 WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}
                 COMMAND_ERROR_IS_FATAL ANY)
             ")
