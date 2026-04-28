@@ -49,9 +49,6 @@ struct Args {
     #[arg(long)]
     ignore: Vec<String>,
 
-    /// Location of dumpbin file. Valid values: [auto] [system] [builtin] path
-    #[arg(long, default_value_t = String::from("[auto]"))]
-    objdump_file: String,
     /// If one or more dll failed to be found, skip it and go on
     #[arg(long, default_value_t = false)]
     allow_missing: bool,
@@ -74,67 +71,7 @@ fn existing_var_path(dest: &mut Vec<String>) {
     }
 }
 
-fn get_system_objdump()->Option<String> {
-    let output=Command::new("where").args(["objdump"]).output().unwrap();
-    let output=String::from_utf8(output.stdout).unwrap().replace('\r',"");
-    for line in output.split('\n') {
-        if is_file(&line) {
-            return Some(line.to_string());
-        }
-    }
-    return None;
-}
-
-fn get_objdump_file(input:&str)->String {
-    if input=="[system]" {
-        if let Some(loc)=get_system_objdump() {
-            return loc;
-        }
-        eprintln!("Failed to find objdump in your system");
-        exit(2);
-    }
-
-    if input == "[builtin]" {
-        let current_exe = std::env::current_exe().expect("Get current exe name");
-        //println!("current_exe = {}",current_exe.to_str().unwrap());
-        let install_prefix = current_exe.parent().expect("Get parent dir of current exe");
-        //println!("install_prefix = {}",install_prefix.to_str().unwrap());
-        let mut p = install_prefix.to_path_buf();
-        if cfg!(target_os = "windows"){
-            p.push("objdump.exe");
-        }else {
-            p.push("objdump");
-        }
-
-        if !is_file(&p) {
-            eprintln!("Builtin objdump executable {} not found",p.display());
-            exit(3);
-        }
-
-        //println!("objdump path = {}",p.to_str().unwrap());
-        return p.to_str().unwrap().to_string();
-    }
-
-    if input=="[auto]"  {
-        if let Some(loc)=get_system_objdump() {
-            return loc;
-        }
-        return get_objdump_file("[builtin]");
-    }
-
-    if !is_file(&input) {
-        eprintln!("Given objdump file {} doesn't exist",input);
-        exit(4);
-    }
-
-    return input.to_string();
-}
-
 impl Args {
-    fn objdump_file(&self) -> String {
-        return get_objdump_file(&self.objdump_file);
-    }
-
     fn shallow_search_dirs(&self) -> Vec<String> {
         let mut vec = self.shallow_search_dir.clone();
         self.existing_cmake_prefix_path(&mut vec);
@@ -224,70 +161,23 @@ impl Args {
     }
 }
 
-// fn parse_output_single_line(output: &str) -> &str {
-//     let fail_msg = format!("Failed to parse dll name from output \"{output}\"");
-//     let loc1 = output.find("dll name: ").expect(&fail_msg);
-//     let loc2 = output.find(".dll").expect(&fail_msg);
-
-//     let loc1 = loc1 + "dll name: ".len();
-//     if loc1 + 1 >= loc2 {
-//         eprintln!("{}", fail_msg);
-//         exit(8);
-//     }
-
-//     return &output[loc1..loc2];
-// }
-fn get_dependencies(file: &str, _objdump_file: &str) -> Vec<String> {
+fn get_dependencies(file: &str) -> Vec<String> {
     let map = pelite::FileMap::open(file).unwrap();
-    // if let Err(e) = pelite::FileMap::open(file) {
-    //     return Err(pelite::Error::from(e));
-    // }
-    // let map = ?;
     let image  = PeFile::from_bytes(&map).unwrap();
-    let imports  = image.imports().unwrap();
+
+    let imports_res = image.imports();
+    if let Some(pelite::Error::Null) = imports_res.err() {
+        return Vec::new();
+    }
+    let imports  = imports_res.unwrap();
     
     let mut ret:Vec<String> = Vec::new();
     for desc in imports {
         let name = desc.dll_name().unwrap().to_string();
         ret.push(name);
     }
-
-    print!("{} imports: [",file);
-    for name in &ret {
-        print!("{}, ",name)
-    }
-    println!("]");
     return ret;
-    // todo!()
 }
-// fn get_dependencies(file: &str, objdump_file: &str) -> Vec<String> {
-//     let output = Command::new(objdump_file).args([file, "-x", "--section=.rdata"]).output()
-//         .expect(&format!("Failed to run objdump at {}", objdump_file));
-
-//     if !output.status.success() {
-//         eprintln!("{} {} -x failed with error code {}", objdump_file, file, output.status.to_string());
-//         eprintln!("The std error is: {}", String::from_utf8(output.stderr).unwrap());
-//         exit(1);
-//     }
-
-//     let output = String::from_utf8(output.stdout)
-//         .expect("Failed to convert output to utf8")
-//         .replace('\r',"")
-//         .to_lowercase();
-//     let split = output.split("\n");
-//     let mut dlls = Vec::with_capacity(split.clone().count());
-//     //let regex=Regex::new(r"dll name: (.+)\.dll").unwrap();
-//     for line in split {
-//         if !line.contains("dll name: ") {
-//             continue;
-//         }
-
-//         let mut str = parse_output_single_line(line).to_string();
-//         str.push_str(".dll");
-//         dlls.push(str);
-//     }
-//     return dlls;
-// }
 
 fn is_vc_redist_dll(name: &str) -> bool {
     let name=name.to_lowercase();
@@ -353,31 +243,6 @@ fn is_file<P: AsRef<Path>>(path: &P) -> bool {
     return false;
 }
 
-fn get_file_format(filename: &str, objdump_loc: &str) -> String {
-    let output = Command::new(objdump_loc).args(["-f", filename]).output().unwrap();
-
-    if !output.status.success() {
-        let command = format!("{objdump_loc} -f {filename}");
-        eprintln!("{command} failed with error code {:?}", output.status.to_string());
-        eprintln!("It failed with std error output: \n{}", String::from_utf8(output.stderr).unwrap());
-        exit(1);
-    }
-
-    let output = String::from_utf8(output.stdout).unwrap().replace('\r', "");
-
-
-    //println!("{}",output);
-    for line in output.split("\n") {
-        //println!("Line {idx}: {line}");
-        if let Some(loc) = line.rfind("file format ") {
-            let loc = loc + "file format ".len();
-            return line[loc..line.len()].to_string();
-        }
-    }
-    eprintln!("Failed to parse file format of {filename} from objdump output, it says: \n{output}");
-    exit(1);
-}
-
 fn validate_dll(dll_loc: &Path, args: &Args, custom_validator: Option<&dyn Fn(&Path) -> Result<(), String>>) -> bool {
     if !is_file(&dll_loc) {
         return false;
@@ -436,11 +301,11 @@ fn search_dll_shallow(name: &str, args: &Args, validate: Option<&dyn Fn(&Path) -
 }
 
 
-fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_format: &str, args: &Args,context: &mut Context) {
+fn deploy_dll(target_binary: &str, target_dir: &str, args: &Args,context: &mut Context) {
     if args.verbose {
         println!("Deploying for \"{target_binary}\" at \"{target_dir}\"");
     }
-    let deps = get_dependencies(target_binary, objdump_file);
+    let deps = get_dependencies(target_binary);
     if args.verbose {
         println!("\"{target_binary}\" requires {:?}",deps)
     }
@@ -496,10 +361,7 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
             let mut loc = None;
 
             let validator = |loc: &Path| {
-                let format = get_file_format(loc.to_str().unwrap(), objdump_file);
-                if format != binary_format {
-                    return Err(format!("DLL architecture mismatch. Expected {binary_format}, but found {format}"));
-                }
+                // let format = get_file_format(loc.to_str().unwrap());
                 return Ok(());
             };
             let validator = Box::new(validator);
@@ -532,7 +394,7 @@ fn deploy_dll(target_binary: &str, target_dir: &str, objdump_file: &str, binary_
             }
         }
 
-        deploy_dll(&expected_filename, target_dir, objdump_file, binary_format, args,context);
+        deploy_dll(&expected_filename, target_dir,  args,context);
     }
     context.deployed_dlls.insert(PathBuf::from(target_binary));
 }
@@ -556,17 +418,11 @@ fn main() {
 
     }
 
-    let objdump_loc=args.objdump_file();
-    if args.verbose {
-        println!("Using objdump at {objdump_loc}");
-    }
-
     let target_dir_path = PathBuf::from(&args.binary_file).parent().unwrap().to_path_buf();
     let target_dir = target_dir_path.to_str().unwrap();
-    let format = get_file_format(&args.binary_file, &args.objdump_file());
-    if args.verbose {
-        println!("Binary format: \"{format}\"");
-    }
+    // if args.verbose {
+    //     println!("Binary format: \"{format}\"");
+    // }
 
     let mut context=Context::default();
     for binary_file in args.target_binary_abs_path() {
@@ -574,7 +430,7 @@ fn main() {
             eprintln!("Given target \"{}\" is not a file",binary_file);
             exit(5);
         }
-        deploy_dll(&binary_file, target_dir, &objdump_loc, &format, &args,&mut context);
+        deploy_dll(&binary_file, target_dir,   &args,&mut context);
     }
 
     for dep in &args.optional_dll_abs_path() {
@@ -585,6 +441,6 @@ fn main() {
         if args.verbose {
             println!("Deploying for optional dll {dep_path}");
         }
-        deploy_dll(dep_path,target_dir, &objdump_loc, &format, &args,&mut context);
+        deploy_dll(dep_path,target_dir,  &args,&mut context);
     }
 }
